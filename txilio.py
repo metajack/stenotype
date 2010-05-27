@@ -1,3 +1,28 @@
+"""
+Copyright (c) 2009, 2010 Twilio, Inc., Jack Moffitt
+
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+"""
+
 import urllib, base64, hmac
 from hashlib import sha1
 from xml.sax.saxutils import escape, quoteattr
@@ -5,7 +30,7 @@ from xml.sax.saxutils import escape, quoteattr
 from twisted.web import client
 
 TWILIO_API_URL = 'https://api.twilio.com/2008-08-01'
-#TWILIO_API_URL = 'http://localhost:5000'
+
 # Twilio REST Helpers
 # ===========================================================================
 
@@ -21,6 +46,11 @@ class Account:
         self.token = token
 
     def request(self, path, method=None, vars=None):
+        """Perform a Twilio API request.
+        This version of the code uses Twisted Web and returns a 
+        deferred, so it never blocks.
+        """
+
         if not path or len(path) == 0:
             raise ValueError('Invalid path parameter')
         if method and method not in ['GET', 'POST', 'DELETE', 'PUT']:
@@ -34,8 +64,23 @@ class Account:
 
         credentials = base64.encodestring('%s:%s' % (self.id, self.token))
         credentials = credentials.replace('\n', '')
-        headerdata = {'Authorization': 'Basic %s' % credentials, "Content-Type": "application/x-www-form-urlencoded"}
-        return client.getPage(uri, method=method, headers=headerdata, postdata=urllib.urlencode(vars))
+
+        headerdata = {'Authorization': 'Basic %s' % credentials,
+                      "Content-Type": "application/x-www-form-urlencoded"}
+
+        vardata = urllib.urlencode(vars)
+
+        if method == 'GET':
+            if vars and len(vars) > 0:
+                if uri.find('?') > 0:
+                    if uri[-1] != '&':
+                        uri += '&'
+                    uri += vardata
+                else:
+                    uri += '?' + vardata
+
+        return client.getPage(uri, method=method, headers=headerdata,
+                              postdata=vardata)
 
 
 # TwiML Response Helpers
